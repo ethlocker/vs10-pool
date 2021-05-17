@@ -188,7 +188,7 @@ contract VFixedStrategy is VCurveBase, Pausable {
         uint256 _a3crv = IERC20(a3crv).balanceOf(address(this));
         console.log("   [strategy Withdraw] a3crv token balance after gauge withdraw=> ", _a3crv);
 
-        a3pool.remove_liquidity_one_coin(lpAmount, index, 0, true);
+        a3pool.remove_liquidity_one_coin(lpForWithdraw, index, 0, true);
         console.log("   [strategy Withdraw] gauge remaining amount => ", totalStakedOfPool());
 
         uint256 _tokenBalanceAfter = IERC20(token).balanceOf(address(this));
@@ -196,7 +196,11 @@ contract VFixedStrategy is VCurveBase, Pausable {
         uint256 afterUSDAmount = _tokenBalanceAfter.mul(_getLatestPrice(token)).div(10**8);
         console.log("   [strategy Withdraw] afterUSDAmount => ", afterUSDAmount);
         uint256 _dustBalance = IERC20(a3crv).balanceOf(address(this));
-        gauge.deposit(_dustBalance);
+        if (_dustBalance > 0) {
+            IERC20(a3crv).safeApprove(address(gauge), 0);
+            IERC20(a3crv).safeApprove(address(gauge), _dustBalance);
+            gauge.deposit(_dustBalance);
+        }
 
         require(_tokenBalanceAfter >= outputAmount, "[a3pool Withdraw] - insufficient token amount");
 
@@ -229,6 +233,8 @@ contract VFixedStrategy is VCurveBase, Pausable {
         console.log("   [strategy Withdraw] lpAmount => ", lpAmount);
 
         uint256 lpForWithdraw = lpAmount.mul(110).div(100); //because of calculation accuracy
+        console.log("   [strategy Withdraw] totalStaked to gauge => ", totalStakedOfPool());
+        console.log("   [strategy Withdraw] lpForWithdraw => ", lpForWithdraw);
         if (totalStakedOfPool() >= lpForWithdraw) gauge.withdraw(lpForWithdraw);
         else gauge.withdraw(totalStakedOfPool());
         gauge.withdraw(lpForWithdraw);
@@ -246,6 +252,8 @@ contract VFixedStrategy is VCurveBase, Pausable {
         uint256 _dustBalance = IERC20(a3crv).balanceOf(address(this));
         if (_dustBalance > 0) {
             console.log("   [strategy Withdraw] a3crv dust => ", _dustBalance);
+            IERC20(a3crv).safeApprove(address(gauge), 0);
+            IERC20(a3crv).safeApprove(address(gauge), _dustBalance);
             gauge.deposit(_dustBalance);
         }
         require(_tokenBalanceAfter >= amount, "[a3pool Withdraw] - insufficient token amount");

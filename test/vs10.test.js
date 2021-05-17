@@ -139,9 +139,9 @@ describe("VS10 Fixed pool test", () => {
 
   const withdrawFromPool = async (from, amount) => {
     console.log("============ Withdram from %s ===============", from);
-    let _balanceDAIBefore = await DAI.balanceOf(alice);
-    let _balanceUSDCBefore = await USDC.balanceOf(alice);
-    let _balanceUSDTBefore = await USDT.balanceOf(alice);
+    let _balanceDAIBefore = await DAI.balanceOf(from);
+    let _balanceUSDCBefore = await USDC.balanceOf(from);
+    let _balanceUSDTBefore = await USDT.balanceOf(from);
 
     console.log("balance of DAI Before => ", _balanceDAIBefore.toString());
     console.log("balance of USDC Before => ", _balanceUSDCBefore.toString());
@@ -149,9 +149,9 @@ describe("VS10 Fixed pool test", () => {
 
     await vs10Pool.withdraw(amount, {from: from});
 
-    let _balanceDAIAfter = await DAI.balanceOf(alice);
-    let _balanceUSDCAfter = await USDC.balanceOf(alice);
-    let _balanceUSDTAfter = await USDT.balanceOf(alice);
+    let _balanceDAIAfter = await DAI.balanceOf(from);
+    let _balanceUSDCAfter = await USDC.balanceOf(from);
+    let _balanceUSDTAfter = await USDT.balanceOf(from);
     console.log("balance of DAI after => ", _balanceDAIAfter.toString());
     console.log("balance of USDC after => ", _balanceUSDCAfter.toString());
     console.log("balance of USDT after => ", _balanceUSDTAfter.toString());

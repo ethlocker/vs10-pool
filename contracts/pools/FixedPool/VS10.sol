@@ -7,5 +7,5 @@ import "./VFixedPoolBase.sol";
 contract VS10Pool is VFixedPoolBase {
     string public constant NAME = "VS10 Fixed Rate Pool";
 
-    constructor(address _controller) public VFixedPoolBase(_controller, 800, "VS10 PoolShare Token", "VS10") {}
+    constructor(address _controller) public VFixedPoolBase(_controller, 500, "VS10 PoolShare Token", "VS10") {}
 }
