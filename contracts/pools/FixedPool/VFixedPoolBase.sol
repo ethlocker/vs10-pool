@@ -100,10 +100,9 @@ abstract contract VFixedPoolBase is VCurveBase, Context, Pausable, ReentrancyGua
         poolInfo.lastTimestamp = block.timestamp;
     }
 
-    function getExceedRewards() public returns (uint256) {
+    function getExceedRewards() public onlyStrategy returns (uint256) {
         // only strategy
         _updateInterest(_msgSender());
-
         return poolInfo.interestTotal.mul(EXCEED_APY).div(APY);
     }
 

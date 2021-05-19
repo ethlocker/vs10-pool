@@ -6,7 +6,7 @@ const {time} = require("@openzeppelin/test-helpers");
 const {web3} = require("@openzeppelin/test-helpers/src/setup");
 
 const Controller = hre.artifacts.require("Controller");
-const VS10Pool = hre.artifacts.require("VS10Pool");
+const VS5Pool = hre.artifacts.require("VS5Pool");
 const ERC20 = hre.artifacts.require("ERC20");
 
 const VFixedStrategy = hre.artifacts.require("VFixedStrategy");
@@ -25,7 +25,7 @@ const fromWei = (amount, decimal = 18) => {
 };
 
 describe("VS10 Fixed pool test", () => {
-  let vs10Pool, controller, strategy;
+  let vs5Pool, controller, strategy;
 
   let vvsp = "0xbA4cFE5741b357FA371b506e5db0774aBFeCf8Fc";
   let whale, DAI, USDC, USDT;
@@ -33,12 +33,8 @@ describe("VS10 Fixed pool test", () => {
   before("Deploy contracts", async () => {
     [alice, bob, john] = await web3.eth.getAccounts();
     controller = await Controller.new();
-    vs10Pool = await VS10Pool.new(controller.address);
-    strategy = await VFixedStrategy.new(
-      controller.address,
-      vs10Pool.address,
-      "0xbA4cFE5741b357FA371b506e5db0774aBFeCf8Fc"
-    );
+    vs5Pool = await VS5Pool.new(controller.address);
+    strategy = await VFixedStrategy.new(controller.address, vs5Pool.address, vvsp);
     await web3.eth.sendTransaction({
       from: alice,
       to: "0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503",
@@ -62,8 +58,8 @@ describe("VS10 Fixed pool test", () => {
     // USDC.transfer(john, toWei(1000000, 6), {from: whale});
     USDT.transfer(john, toWei(1000000, 6), {from: whale});
 
-    await controller.addPool(vs10Pool.address);
-    await controller.updateStrategy(vs10Pool.address, strategy.address);
+    await controller.addPool(vs5Pool.address);
+    await controller.updateStrategy(vs5Pool.address, strategy.address);
   });
 
   it("get balance should work", async () => {
@@ -97,43 +93,43 @@ describe("VS10 Fixed pool test", () => {
 
   it("deposit should work", async () => {
     console.log("========= Alice DAI deposit ==============");
-    await DAI.approve(vs10Pool.address, toWei(1000000), {from: alice});
-    await vs10Pool.deposit(DAI.address, toWei(1000000), {from: alice});
-    console.log("alice vs10 share balance => ", (await vs10Pool.balanceOf(alice)).toString());
+    await DAI.approve(vs5Pool.address, toWei(1000000), {from: alice});
+    await vs5Pool.deposit(DAI.address, toWei(1000000), {from: alice});
+    console.log("alice vs10 share balance => ", (await vs5Pool.balanceOf(alice)).toString());
 
     console.log("========= Bob usdc deposit ==============");
-    await USDC.approve(vs10Pool.address, toWei(1000000, 6), {from: bob});
-    await vs10Pool.deposit(USDC.address, toWei(1000000, 6), {from: bob});
-    console.log("bob vs10 share balance => ", (await vs10Pool.balanceOf(bob)).toString());
+    await USDC.approve(vs5Pool.address, toWei(1000000, 6), {from: bob});
+    await vs5Pool.deposit(USDC.address, toWei(1000000, 6), {from: bob});
+    console.log("bob vs10 share balance => ", (await vs5Pool.balanceOf(bob)).toString());
 
     console.log("========= John usdt deposit ==============");
-    await USDT.approve(vs10Pool.address, toWei(1000000, 6), {from: john});
-    await vs10Pool.deposit(USDT.address, toWei(1000000, 6), {from: john});
-    console.log("john vs10 share balance => ", (await vs10Pool.balanceOf(john)).toString());
+    await USDT.approve(vs5Pool.address, toWei(1000000, 6), {from: john});
+    await vs5Pool.deposit(USDT.address, toWei(1000000, 6), {from: john});
+    console.log("john vs10 share balance => ", (await vs5Pool.balanceOf(john)).toString());
 
     console.log("========= Pool total balance ============");
-    console.log("total balance => ", (await vs10Pool.totalBalanceOfPool()).toString());
+    console.log("total balance => ", (await vs5Pool.totalBalanceOfPool()).toString());
   });
 
   it("rebalance should work", async () => {
     console.log("======= Initial rebalance ========");
-    await vs10Pool.rebalance();
+    await vs5Pool.rebalance();
     console.log("======= 30 days after ========");
     await increaseTime(60 * 60 * 24 * 30);
     console.log("======= second rebalance ========");
-    await vs10Pool.rebalance();
+    await vs5Pool.rebalance();
     await withdrawFromPool(alice, "100000000000000000000000");
 
     console.log("======= 3 months after ========");
     await increaseTime(60 * 60 * 24 * 90);
     console.log("======= third rebalance ========");
-    await vs10Pool.rebalance();
+    await vs5Pool.rebalance();
     await withdrawFromPool(bob, "200000000000000000000000");
 
     console.log("======= 3 months after ========");
     await increaseTime(60 * 60 * 24 * 90);
     console.log("======= firth rebalance ========");
-    await vs10Pool.rebalance();
+    await vs5Pool.rebalance();
     await withdrawFromPool(john, "1000000000000000000000000");
   });
 
@@ -147,7 +143,7 @@ describe("VS10 Fixed pool test", () => {
     console.log("balance of USDC Before => ", _balanceUSDCBefore.toString());
     console.log("balance of USDT Before => ", _balanceUSDTBefore.toString());
 
-    await vs10Pool.withdraw(amount, {from: from});
+    await vs5Pool.withdraw(amount, {from: from});
 
     let _balanceDAIAfter = await DAI.balanceOf(from);
     let _balanceUSDCAfter = await USDC.balanceOf(from);

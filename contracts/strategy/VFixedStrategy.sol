@@ -97,7 +97,6 @@ contract VFixedStrategy is VCurveBase, Pausable {
     }
 
     function rebalance() external whenNotPaused {
-        //only pool can call
         require(block.number - lastRebalanceBlock >= controller.rebalanceFriction(address(vvsp)), "Can not rebalance");
 
         lastRebalanceBlock = block.number;
@@ -147,17 +146,17 @@ contract VFixedStrategy is VCurveBase, Pausable {
             uint256 exceedRewards = IVFixedPool(pool).getExceedRewards();
             console.log("   [rebalance] exceedRewards => ", exceedRewards);
             if (rewards >= exceedRewards) {
+                console.log("   [rebalance] sending to vvsp => ", rewards.sub(exceedRewards));
                 _withdraw(vvsp, rewards.sub(exceedRewards), true);
             }
         }
     }
 
-    function _getLatestPrice(address _token) internal view returns (uint256) {
+    function getLatestPrice(address _token) public view returns (uint256) {
         return IVFixedPool(pool).getLatestPrice(_token);
     }
 
-    function withdraw(address token, uint256 amount) external returns (uint256) {
-        //from pool only
+    function withdraw(address token, uint256 amount) external onlyPool returns (uint256) {
         return _withdraw(pool, token, amount);
     }
 
@@ -167,10 +166,10 @@ contract VFixedStrategy is VCurveBase, Pausable {
         bool isUSD
     ) internal returns (uint256) {
         console.log("   [strategy Withdraw] amount => ", amount);
-        (address token, int128 index) = getMaximumToken();
+        (address token, int128 index) = getMaxTokenFromA3Pool();
         console.log("   [strategy Withdraw] token => ", token);
         uint256 outputAmount;
-        if (isUSD) outputAmount = convertFrom18(token, amount.mul(10**8).div(_getLatestPrice(token)));
+        if (isUSD) outputAmount = convertFrom18(token, amount.mul(10**8).div(getLatestPrice(token)));
         else outputAmount = amount;
         console.log("   [strategy Withdraw] outputAmount => ", outputAmount);
         uint256[3] memory _amounts;
@@ -182,18 +181,18 @@ contract VFixedStrategy is VCurveBase, Pausable {
         uint256 lpAmount = a3pool.calc_token_amount(_amounts, false);
         console.log("   [strategy Withdraw] lpAmount => ", lpAmount);
         uint256 lpForWithdraw = lpAmount.mul(110).div(100); //because of calculation accuracy
-        if (totalStakedOfPool() >= lpForWithdraw) gauge.withdraw(lpForWithdraw);
-        else gauge.withdraw(totalStakedOfPool());
+        if (totalDepositedToGauge() >= lpForWithdraw) gauge.withdraw(lpForWithdraw);
+        else gauge.withdraw(totalDepositedToGauge());
 
         uint256 _a3crv = IERC20(a3crv).balanceOf(address(this));
         console.log("   [strategy Withdraw] a3crv token balance after gauge withdraw=> ", _a3crv);
 
         a3pool.remove_liquidity_one_coin(lpForWithdraw, index, 0, true);
-        console.log("   [strategy Withdraw] gauge remaining amount => ", totalStakedOfPool());
+        console.log("   [strategy Withdraw] gauge remaining amount => ", totalDepositedToGauge());
 
         uint256 _tokenBalanceAfter = IERC20(token).balanceOf(address(this));
         console.log("   [strategy Withdraw] _tokenBalanceAfter => ", _tokenBalanceAfter);
-        uint256 afterUSDAmount = _tokenBalanceAfter.mul(_getLatestPrice(token)).div(10**8);
+        uint256 afterUSDAmount = _tokenBalanceAfter.mul(getLatestPrice(token)).div(10**8);
         console.log("   [strategy Withdraw] afterUSDAmount => ", afterUSDAmount);
         uint256 _dustBalance = IERC20(a3crv).balanceOf(address(this));
         if (_dustBalance > 0) {
@@ -233,21 +232,21 @@ contract VFixedStrategy is VCurveBase, Pausable {
         console.log("   [strategy Withdraw] lpAmount => ", lpAmount);
 
         uint256 lpForWithdraw = lpAmount.mul(110).div(100); //because of calculation accuracy
-        console.log("   [strategy Withdraw] totalStaked to gauge => ", totalStakedOfPool());
+        console.log("   [strategy Withdraw] totalStaked to gauge => ", totalDepositedToGauge());
         console.log("   [strategy Withdraw] lpForWithdraw => ", lpForWithdraw);
-        if (totalStakedOfPool() >= lpForWithdraw) gauge.withdraw(lpForWithdraw);
-        else gauge.withdraw(totalStakedOfPool());
-        gauge.withdraw(lpForWithdraw);
+
+        if (totalDepositedToGauge() >= lpForWithdraw) gauge.withdraw(lpForWithdraw);
+        else gauge.withdraw(totalDepositedToGauge());
 
         uint256 _a3crv = IERC20(a3crv).balanceOf(address(this));
         console.log("   [strategy Withdraw] a3crv token balance after gauge withdraw=> ", _a3crv);
 
         a3pool.remove_liquidity_one_coin(lpForWithdraw, index, 0, true);
-        console.log("   [strategy Withdraw] gauge remaining amount => ", totalStakedOfPool());
+        console.log("   [strategy Withdraw] gauge remaining amount => ", totalDepositedToGauge());
 
         uint256 _tokenBalanceAfter = IERC20(token).balanceOf(address(this));
         console.log("   [strategy Withdraw] _tokenBalanceAfter => ", _tokenBalanceAfter);
-        uint256 afterUSDAmount = _tokenBalanceAfter.mul(_getLatestPrice(token)).div(10**8);
+        uint256 afterUSDAmount = _tokenBalanceAfter.mul(getLatestPrice(token)).div(10**8);
         console.log("   [strategy Withdraw] afterUSDAmount => ", afterUSDAmount);
         uint256 _dustBalance = IERC20(a3crv).balanceOf(address(this));
         if (_dustBalance > 0) {
@@ -267,7 +266,7 @@ contract VFixedStrategy is VCurveBase, Pausable {
         return amount;
     }
 
-    function getMaximumToken() public view returns (address, int128) {
+    function getMaxTokenFromA3Pool() public view returns (address, int128) {
         uint256[] memory balances = new uint256[](3);
         balances[0] = a3pool.balances(0); // DAI
         balances[1] = a3pool.balances(1).mul(10**12); // USDC
@@ -291,15 +290,15 @@ contract VFixedStrategy is VCurveBase, Pausable {
     function getStrategyBalance() public view returns (uint256) {
         uint256 _lpSupply = IERC20(a3crv).totalSupply();
         console.log("   [strategy getStrategyBalance] a3crv Supply => ", _lpSupply);
-        uint256 _balance = totalStakedOfPool();
+        uint256 _balance = totalDepositedToGauge();
         console.log("   [strategy getStrategyBalance] a3crv balance => ", _balance);
-        uint256 _daiBalanceUSD = a3pool.balances(0).mul(_getLatestPrice(DAI)).mul(_balance).div(_lpSupply).div(10**8);
+        uint256 _daiBalanceUSD = a3pool.balances(0).mul(getLatestPrice(DAI)).mul(_balance).div(_lpSupply).div(10**8);
         console.log("   [strategy getStrategyBalance] _daiBalanceUSD => ", _daiBalanceUSD);
         uint256 _usdcBalanceUSD =
-            a3pool.balances(1).mul(10**12).mul(_getLatestPrice(USDC)).mul(_balance).div(_lpSupply).div(10**8);
+            a3pool.balances(1).mul(10**12).mul(getLatestPrice(USDC)).mul(_balance).div(_lpSupply).div(10**8);
         console.log("   [strategy getStrategyBalance] _usdcBalanceUSD => ", _usdcBalanceUSD);
         uint256 _usdtBalanceUSD =
-            a3pool.balances(2).mul(10**12).mul(_getLatestPrice(USDT)).mul(_balance).div(_lpSupply).div(10**8);
+            a3pool.balances(2).mul(10**12).mul(getLatestPrice(USDT)).mul(_balance).div(_lpSupply).div(10**8);
         console.log("   [strategy getStrategyBalance] _usdtBalanceUSD => ", _usdtBalanceUSD);
         return _daiBalanceUSD.add(_usdcBalanceUSD).add(_usdtBalanceUSD);
     }
@@ -339,11 +338,16 @@ contract VFixedStrategy is VCurveBase, Pausable {
         IUniswapV2Router02(univ2Router2).swapExactTokensForTokens(_amount, 0, path, address(this), now.add(60));
     }
 
-    function totalStakedOfPool() public view returns (uint256) {
+    function totalDepositedToGauge() public view returns (uint256) {
         return gauge.balanceOf(address(this));
     }
 
     function getRewardClaimable() public returns (uint256) {
         return gauge.claimable_tokens(address(this));
+    }
+
+    modifier onlyPool() {
+        require(_msgSender() == pool, "caller is not the pool");
+        _;
     }
 }
