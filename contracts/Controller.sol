@@ -6,7 +6,7 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./Owned.sol";
-import "./interfaces/vesper/IVesperPool.sol";
+import "./interfaces/vesper/IVFixedPool.sol";
 import "./interfaces/vesper/IStrategy.sol";
 import "./interfaces/vesper/IPoolRewards.sol";
 import "./interfaces/address-list/IAddressList.sol";
@@ -30,8 +30,7 @@ contract Controller is Owned {
     IAddressList public immutable pools;
 
     constructor() public {
-        IAddressListFactory addressFactory =
-            IAddressListFactory(0xD57b41649f822C51a73C44Ba0B3da4A880aF0029);
+        IAddressListFactory addressFactory = IAddressListFactory(0xD57b41649f822C51a73C44Ba0B3da4A880aF0029);
         pools = IAddressList(addressFactory.createList());
     }
 
@@ -101,11 +100,7 @@ contract Controller is Owned {
         aaveReferralCode = referralCode;
     }
 
-    function updateFeeCollector(address _pool, address _collector)
-        external
-        onlyOwner
-        validPool(_pool)
-    {
+    function updateFeeCollector(address _pool, address _collector) external onlyOwner validPool(_pool) {
         require(_collector != address(0), "invalid-collector");
         require(feeCollector[_pool] != _collector, "same-collector");
         feeCollector[_pool] = _collector;
@@ -127,16 +122,17 @@ contract Controller is Owned {
         interestFee[_pool] = _interestFee;
     }
 
-    function updateStrategy(address _pool, address _newStrategy)
-        external
-        onlyOwner
-        validPool(_pool)
-    {
+    function setTimeLock(address _pool, uint256 _duration) external onlyOwner {
+        require(_pool != address(0), "invalid pool address");
+        IVFixedPool(_pool).setTimeLock(_duration);
+    }
+
+    function updateStrategy(address _pool, address _newStrategy) external onlyOwner validPool(_pool) {
         require(_newStrategy != address(0), "invalid-strategy-address");
         address currentStrategy = strategy[_pool];
         require(currentStrategy != _newStrategy, "same-pool-strategy");
         require(IStrategy(_newStrategy).pool() == _pool, "wrong-pool");
-        IVesperPool vpool = IVesperPool(_pool);
+        IVFixedPool vpool = IVFixedPool(_pool);
         if (currentStrategy != address(0)) {
             require(IStrategy(currentStrategy).isUpgradable(), "strategy-is-not-upgradable");
             vpool.resetApproval();
@@ -145,20 +141,12 @@ contract Controller is Owned {
         vpool.approveToken();
     }
 
-    function updateRebalanceFriction(address _pool, uint256 _f)
-        external
-        onlyOwner
-        validPool(_pool)
-    {
+    function updateRebalanceFriction(address _pool, uint256 _f) external onlyOwner validPool(_pool) {
         require(rebalanceFriction[_pool] != _f, "same-friction");
         rebalanceFriction[_pool] = _f;
     }
 
-    function updatePoolRewards(address _pool, address _poolRewards)
-        external
-        onlyOwner
-        validPool(_pool)
-    {
+    function updatePoolRewards(address _pool, address _poolRewards) external onlyOwner validPool(_pool) {
         require(IPoolRewards(_poolRewards).pool() == _pool, "wrong-pool");
         poolRewards[_pool] = _poolRewards;
     }
@@ -171,11 +159,7 @@ contract Controller is Owned {
         uniswapRouter = _uniswapRouter;
     }
 
-    function updateWithdrawFee(address _pool, uint256 _newWithdrawFee)
-        external
-        onlyOwner
-        validPool(_pool)
-    {
+    function updateWithdrawFee(address _pool, uint256 _newWithdrawFee) external onlyOwner validPool(_pool) {
         require(_newWithdrawFee <= 1e18, "withdraw-fee-limit-reached");
         require(withdrawFee[_pool] != _newWithdrawFee, "same-withdraw-fee");
         require(feeCollector[_pool] != address(0), "FeeCollector-not-set");

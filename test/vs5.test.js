@@ -1,10 +1,9 @@
 const hre = require("hardhat");
 var chaiAsPromised = require("chai-as-promised");
 
-const {assert} = require("chai").use(chaiAsPromised);
+const {expect, assert} = require("chai").use(chaiAsPromised);
 const {time} = require("@openzeppelin/test-helpers");
 const {web3} = require("@openzeppelin/test-helpers/src/setup");
-const {expect} = require("hardhat");
 
 const Controller = hre.artifacts.require("Controller");
 const VS5Pool = hre.artifacts.require("VS5Pool");
@@ -55,7 +54,14 @@ describe("VS10 Fixed pool test", () => {
     USDT.transfer(john, toWei(1000000, 6), {from: whale});
 
     await controller.addPool(vs5Pool.address);
+
     await controller.updateStrategy(vs5Pool.address, strategy.address);
+  });
+
+  it("setTimeLock should work", async () => {
+    await controller.setTimeLock(vs5Pool.address, 604800); //604800 is 7 days
+    const duration = await vs5Pool.timelockDuration();
+    expect(duration.toNumber()).to.equal(604800);
   });
 
   it("get balance should work", async () => {
@@ -103,19 +109,21 @@ describe("VS10 Fixed pool test", () => {
   });
 
   it("withdraw should work", async () => {
-    await withdrawFromPool(alice, await vs5Pool.balanceOf(alice));
-
+    // await withdrawFromPool(alice, await vs5Pool.balanceOf(alice));
+    await withdrawFromPool(alice, toWei(500000));
     console.log("======= 3 months after ========");
     await increaseTime(60 * 60 * 24 * 90);
     console.log("======= third rebalance ========");
     await vs5Pool.rebalance();
-    await withdrawFromPool(bob, await vs5Pool.balanceOf(bob));
+    // await withdrawFromPool(bob, await vs5Pool.balanceOf(bob));
+    await withdrawFromPool(bob, toWei(500000));
 
     console.log("======= 3 months after ========");
     await increaseTime(60 * 60 * 24 * 90);
     console.log("======= 4th rebalance ========");
     await vs5Pool.rebalance();
-    await withdrawFromPool(john, await vs5Pool.balanceOf(john));
+    // await withdrawFromPool(john, await vs5Pool.balanceOf(john));
+    await withdrawFromPool(john, toWei(500000));
     console.log("");
     console.log("DAI balance of vvsp  after all withdraw => ", fromWei((await DAI.balanceOf(vvsp)).toString()));
     console.log("USDC balance of vvsp  after all withdraw => ", fromWei((await USDC.balanceOf(vvsp)).toString(), 6));
@@ -144,7 +152,7 @@ describe("VS10 Fixed pool test", () => {
   };
 
   const increaseTime = async (sec) => {
-    await network.provider.send("evm_increaseTime", [sec]);
-    await network.provider.send("evm_mine");
+    await hre.network.provider.send("evm_increaseTime", [sec]);
+    await hre.network.provider.send("evm_mine");
   };
 });

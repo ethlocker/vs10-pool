@@ -123,7 +123,7 @@ abstract contract VFixedPoolBase is VTokenBase, Context, Pausable, ReentrancyGua
     function deposit(address token, uint256 amount) public whenNotPaused nonReentrant {
         require(token == DAI || token == USDC || token == USDT, "[Deposit] Deposit token is not allowed");
         require(!address(_msgSender()).isContract(), "[Deposit] Contract is not allowed");
-        require(timelockDuration != 0, "timelock duration is not set");
+        require(timelockDuration > 0, "timelock duration is not set");
         // save user amount in usd
 
         UserInfo storage user = userInfo[_msgSender()];
@@ -141,6 +141,7 @@ abstract contract VFixedPoolBase is VTokenBase, Context, Pausable, ReentrancyGua
 
     function withdraw(uint256 usdAmount) public whenNotPaused nonReentrant {
         require(!address(_msgSender()).isContract(), "[Withdraw] Contract is not allowed");
+        require(timelockDuration > 0, "timelock duration is not set");
         UserInfo storage user = userInfo[_msgSender()];
         require(user.timelock > 0 && user.timelock < now, "[Withdraw] withdraw is not allowed in the lock period");
 

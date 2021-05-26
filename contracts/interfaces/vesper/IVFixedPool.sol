@@ -13,5 +13,21 @@ interface IVFixedPool {
 
     function totalBalanceOfPool() external view returns (uint256);
 
+    function approveToken() external;
+
+    function deposit(address, uint256) external;
+
+    function rebalance() external;
+
+    function resetApproval() external;
+
+    function getUserInterestEarned(address) external view returns (uint256);
+
+    function getPoolInterestEarned() external view returns (uint256);
+
+    function withdraw(uint256) external;
+
+    function setTimeLock(uint256) external;
+
     function getMinimumToken() external view returns (address, int128);
 }
