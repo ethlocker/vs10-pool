@@ -7,7 +7,9 @@
     "ora": "^5.1.0"
   },
   "scripts": {
-    "flatten": "npx sol-merger \"./src/**/*.sol\" ./build"
+    "compile": "npx hardhat compile",
+    "test": "npx hardhat test",
+    "test:coverage": "npx hardhat coverage --testfiles test/vs5.test.js"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
@@ -22,7 +24,10 @@
     "dotenv": "^8.2.0",
     "eslint": "^7.10.0",
     "hardhat": "^2.1.1",
-    "prettier-plugin-solidity": "^1.0.0-beta.6"
+    "hardhat-gas-reporter": "^1.0.4",
+    "hardhat-preprocessor": "^0.1.4",
+    "prettier-plugin-solidity": "^1.0.0-beta.6",
+    "solidity-coverage": "^0.7.16"
   },
   "eslintConfig": {
     "extends": "eslint:recommended",

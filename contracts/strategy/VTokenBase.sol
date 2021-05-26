@@ -9,9 +9,8 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "hardhat/console.sol";
 
-abstract contract VCurveBase {
+abstract contract VTokenBase {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -31,22 +30,19 @@ abstract contract VCurveBase {
     uint256 public constant MAX_UINT_VALUE = uint256(-1);
 
     function convertFrom18(address _token, uint256 _amount) internal pure returns (uint256) {
-        if (_token == DAI) return _amount;
-        else if (_token == USDC) return _amount.div(10**12);
+        if (_token == USDC) return _amount.div(10**12);
         else if (_token == USDT) return _amount.div(10**12);
         return _amount;
     }
 
     function convertTo18(address _token, uint256 _amount) internal pure returns (uint256) {
-        if (_token == DAI) return _amount;
-        else if (_token == USDC) return _amount.mul(10**12);
+        if (_token == USDC) return _amount.mul(10**12);
         else if (_token == USDT) return _amount.mul(10**12);
         return _amount;
     }
 
     function getTokenIndex(address token) internal pure returns (int128) {
-        if (token == DAI) return 0;
-        else if (token == USDC) return 1;
+        if (token == USDC) return 1;
         else if (token == USDT) return 2;
         return 0;
     }

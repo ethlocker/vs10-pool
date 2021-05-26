@@ -4,6 +4,7 @@ var chaiAsPromised = require("chai-as-promised");
 const {assert} = require("chai").use(chaiAsPromised);
 const {time} = require("@openzeppelin/test-helpers");
 const {web3} = require("@openzeppelin/test-helpers/src/setup");
+const {expect} = require("hardhat");
 
 const Controller = hre.artifacts.require("Controller");
 const VS5Pool = hre.artifacts.require("VS5Pool");
@@ -35,6 +36,7 @@ describe("VS10 Fixed pool test", () => {
     controller = await Controller.new();
     vs5Pool = await VS5Pool.new(controller.address);
     strategy = await VFixedStrategy.new(controller.address, vs5Pool.address, vvsp);
+
     await web3.eth.sendTransaction({
       from: alice,
       to: "0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503",
@@ -47,15 +49,9 @@ describe("VS10 Fixed pool test", () => {
     USDT = await ERC20.at("0xdac17f958d2ee523a2206206994597c13d831ec7");
 
     DAI.transfer(alice, toWei(1000000), {from: whale});
-    // USDC.transfer(alice, toWei(1000000, 6), {from: whale});
-    // USDT.transfer(alice, toWei(1000000, 6), {from: whale});
 
-    // DAI.transfer(bob, toWei(1000000), {from: whale});
     USDC.transfer(bob, toWei(1000000, 6), {from: whale});
-    // USDT.transfer(bob, toWei(1000000, 6), {from: whale});
 
-    // DAI.transfer(john, toWei(1000000), {from: whale});
-    // USDC.transfer(john, toWei(1000000, 6), {from: whale});
     USDT.transfer(john, toWei(1000000, 6), {from: whale});
 
     await controller.addPool(vs5Pool.address);
@@ -66,26 +62,8 @@ describe("VS10 Fixed pool test", () => {
     let _balance = await DAI.balanceOf(alice);
     assert.equal(_balance.toString(), toWei(1000000).toString(), "dai transfer failed");
 
-    // _balance = await USDC.balanceOf(alice);
-    // assert.equal(_balance.toString(), toWei(1000000, 6).toString(), "alice usdc transfer failed");
-
-    // _balance = await USDT.balanceOf(alice);
-    // assert.equal(_balance.toString(), toWei(1000000, 6).toString(), "alice usdt transfer failed");
-
-    // _balance = await DAI.balanceOf(bob);
-    // assert.equal(_balance.toString(), toWei(1000000).toString(), "bob dai transfer failed");
-
     _balance = await USDC.balanceOf(bob);
     assert.equal(_balance.toString(), toWei(1000000, 6).toString(), "bob usdc transfer failed");
-
-    // _balance = await USDT.balanceOf(bob);
-    // assert.equal(_balance.toString(), toWei(1000000, 6).toString(), "bob usdt transfer failed");
-
-    // _balance = await DAI.balanceOf(john);
-    // assert.equal(_balance.toString(), toWei(1000000).toString(), "john dai transfer failed");
-
-    // _balance = await USDC.balanceOf(john);
-    // assert.equal(_balance.toString(), toWei(1000000, 6).toString(), "john usdc transfer failed");
 
     _balance = await USDT.balanceOf(john);
     assert.equal(_balance.toString(), toWei(1000000, 6).toString(), "john usdt transfer failed");
@@ -95,20 +73,24 @@ describe("VS10 Fixed pool test", () => {
     console.log("========= Alice DAI deposit ==============");
     await DAI.approve(vs5Pool.address, toWei(1000000), {from: alice});
     await vs5Pool.deposit(DAI.address, toWei(1000000), {from: alice});
-    console.log("alice vs10 share balance => ", (await vs5Pool.balanceOf(alice)).toString());
+    console.log("alice vs10 share balance => ", fromWei((await vs5Pool.balanceOf(alice)).toString()));
 
     console.log("========= Bob usdc deposit ==============");
     await USDC.approve(vs5Pool.address, toWei(1000000, 6), {from: bob});
     await vs5Pool.deposit(USDC.address, toWei(1000000, 6), {from: bob});
-    console.log("bob vs10 share balance => ", (await vs5Pool.balanceOf(bob)).toString());
+    console.log("bob vs10 share balance => ", fromWei((await vs5Pool.balanceOf(bob)).toString()));
 
     console.log("========= John usdt deposit ==============");
     await USDT.approve(vs5Pool.address, toWei(1000000, 6), {from: john});
     await vs5Pool.deposit(USDT.address, toWei(1000000, 6), {from: john});
-    console.log("john vs10 share balance => ", (await vs5Pool.balanceOf(john)).toString());
+    console.log("john vs10 share balance => ", fromWei((await vs5Pool.balanceOf(john)).toString()));
+  });
 
+  it("get totalbalance should work", async () => {
     console.log("========= Pool total balance ============");
-    console.log("total balance => ", (await vs5Pool.totalBalanceOfPool()).toString());
+    const totalBalance = await vs5Pool.totalBalanceOfPool();
+    console.log("total balance => ", fromWei(totalBalance.toString()));
+    expect(totalBalance.toString()).equal(toWei(3000000).toString());
   });
 
   it("rebalance should work", async () => {
@@ -118,19 +100,26 @@ describe("VS10 Fixed pool test", () => {
     await increaseTime(60 * 60 * 24 * 30);
     console.log("======= second rebalance ========");
     await vs5Pool.rebalance();
-    await withdrawFromPool(alice, "100000000000000000000000");
+  });
+
+  it("withdraw should work", async () => {
+    await withdrawFromPool(alice, await vs5Pool.balanceOf(alice));
 
     console.log("======= 3 months after ========");
     await increaseTime(60 * 60 * 24 * 90);
     console.log("======= third rebalance ========");
     await vs5Pool.rebalance();
-    await withdrawFromPool(bob, "200000000000000000000000");
+    await withdrawFromPool(bob, await vs5Pool.balanceOf(bob));
 
     console.log("======= 3 months after ========");
     await increaseTime(60 * 60 * 24 * 90);
-    console.log("======= firth rebalance ========");
+    console.log("======= 4th rebalance ========");
     await vs5Pool.rebalance();
-    await withdrawFromPool(john, "1000000000000000000000000");
+    await withdrawFromPool(john, await vs5Pool.balanceOf(john));
+    console.log("");
+    console.log("DAI balance of vvsp  after all withdraw => ", fromWei((await DAI.balanceOf(vvsp)).toString()));
+    console.log("USDC balance of vvsp  after all withdraw => ", fromWei((await USDC.balanceOf(vvsp)).toString(), 6));
+    console.log("USDT balance of vvsp  after all withdraw => ", fromWei((await USDT.balanceOf(vvsp)).toString(), 6));
   });
 
   const withdrawFromPool = async (from, amount) => {
@@ -139,18 +128,18 @@ describe("VS10 Fixed pool test", () => {
     let _balanceUSDCBefore = await USDC.balanceOf(from);
     let _balanceUSDTBefore = await USDT.balanceOf(from);
 
-    console.log("balance of DAI Before => ", _balanceDAIBefore.toString());
-    console.log("balance of USDC Before => ", _balanceUSDCBefore.toString());
-    console.log("balance of USDT Before => ", _balanceUSDTBefore.toString());
+    console.log("balance of DAI Before => ", fromWei(_balanceDAIBefore.toString()));
+    console.log("balance of USDC Before => ", fromWei(_balanceUSDCBefore.toString(), 6));
+    console.log("balance of USDT Before => ", fromWei(_balanceUSDTBefore.toString(), 6));
 
     await vs5Pool.withdraw(amount, {from: from});
 
     let _balanceDAIAfter = await DAI.balanceOf(from);
     let _balanceUSDCAfter = await USDC.balanceOf(from);
     let _balanceUSDTAfter = await USDT.balanceOf(from);
-    console.log("balance of DAI after => ", _balanceDAIAfter.toString());
-    console.log("balance of USDC after => ", _balanceUSDCAfter.toString());
-    console.log("balance of USDT after => ", _balanceUSDTAfter.toString());
+    console.log("balance of DAI after => ", fromWei(_balanceDAIAfter.toString()));
+    console.log("balance of USDC after => ", fromWei(_balanceUSDCAfter.toString(), 6));
+    console.log("balance of USDT after => ", fromWei(_balanceUSDTAfter.toString(), 6));
     console.log("");
   };
 

@@ -12,12 +12,12 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "hardhat/console.sol";
 
 import "../../Pausable.sol";
-import "../../strategy/VCurveBase.sol";
+import "../../strategy/VTokenBase.sol";
 import "../../interfaces/vesper/IVFixedStrategy.sol";
 import "../../interfaces/vesper/IController.sol";
 import "../../interfaces/chainlink/AggregatorV3Interface.sol";
 
-abstract contract VFixedPoolBase is VCurveBase, Context, Pausable, ReentrancyGuard, ERC20 {
+abstract contract VFixedPoolBase is VTokenBase, Context, Pausable, ReentrancyGuard, ERC20 {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -36,6 +36,7 @@ abstract contract VFixedPoolBase is VCurveBase, Context, Pausable, ReentrancyGua
         uint256 timelock;
     }
     mapping(address => UserInfo) public userInfo;
+
     struct PoolInfo {
         uint256 balanceTotal;
         uint256 interestTotal;
@@ -100,10 +101,18 @@ abstract contract VFixedPoolBase is VCurveBase, Context, Pausable, ReentrancyGua
         poolInfo.lastTimestamp = block.timestamp;
     }
 
-    function getExceedRewards() public onlyStrategy returns (uint256) {
+    function getExceedRewards() external onlyStrategy returns (uint256) {
         // only strategy
         _updateInterest(_msgSender());
         return poolInfo.interestTotal.mul(EXCEED_APY).div(APY);
+    }
+
+    function getUserInterestEarned(address user) external view returns (uint256) {
+        return userInfo[user].interestEarned;
+    }
+
+    function getPoolInterestEarned() external view returns (uint256) {
+        return poolInfo.interestTotal;
     }
 
     /**
@@ -114,6 +123,7 @@ abstract contract VFixedPoolBase is VCurveBase, Context, Pausable, ReentrancyGua
     function deposit(address token, uint256 amount) public whenNotPaused nonReentrant {
         require(token == DAI || token == USDC || token == USDT, "[Deposit] Deposit token is not allowed");
         require(!address(_msgSender()).isContract(), "[Deposit] Contract is not allowed");
+        require(timelockDuration != 0, "timelock duration is not set");
         // save user amount in usd
 
         UserInfo storage user = userInfo[_msgSender()];
@@ -254,10 +264,6 @@ abstract contract VFixedPoolBase is VCurveBase, Context, Pausable, ReentrancyGua
         IERC20(USDC).safeApprove(strategy, 0);
         IERC20(USDT).safeApprove(strategy, 0);
     }
-
-    function tokenLocked() public view returns (uint256) {}
-
-    function totalValue() public view returns (uint256) {}
 
     modifier onlyStrategy() {
         require(_msgSender() == controller.strategy(address(this)), "caller is not the strategy");

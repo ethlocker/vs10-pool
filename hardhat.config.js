@@ -2,6 +2,9 @@ require("@nomiclabs/hardhat-truffle5");
 require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-ethers");
 require("dotenv").config();
+require("hardhat-gas-reporter");
+require("solidity-coverage");
+const {removeConsoleLog} = require("hardhat-preprocessor");
 
 module.exports = {
   defaultNetwork: "hardhat",
@@ -43,17 +46,26 @@ module.exports = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 9999,
+        runs: 200,
       },
     },
   },
   mocha: {
     timeout: 20000000,
   },
+  gasReporter: {
+    enabled: true,
+    coinmarketcap: process.env.COINMARKETCAP,
+    currency: "USD",
+    gasPrice: 61,
+  },
   paths: {
     sources: "./contracts",
     tests: "./test",
     cache: "./cache",
     artifacts: "./artifacts",
+  },
+  preprocess: {
+    eachLine: removeConsoleLog((hre) => hre.network.name !== "hardhat" && hre.network.name !== "localhost"),
   },
 };

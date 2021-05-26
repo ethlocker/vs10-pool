@@ -7,14 +7,14 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../Pausable.sol";
-import "./VCurveBase.sol";
+import "./VTokenBase.sol";
 import "../interfaces/vesper/IController.sol";
 import "../interfaces/vesper/IVFixedPool.sol";
 import "../interfaces/address-list/IAddressListExt.sol";
 import "../interfaces/address-list/IAddressListFactory.sol";
 import "hardhat/console.sol";
 
-contract VFixedStrategy is VCurveBase, Pausable {
+contract VFixedStrategy is VTokenBase, Pausable {
     uint256 public lastRebalanceBlock;
     IController public immutable controller;
     address public immutable vvsp;

@@ -5,3 +5,5 @@ package-lock.json
 artifacts
 cache
 build
+coverage
+coverage.json
